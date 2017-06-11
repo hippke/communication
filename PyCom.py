@@ -1,3 +1,4 @@
+import numpy
 from astropy.constants import c, G, M_sun, R_sun, au, L_sun, pc
 from astropy import units as u
 from math import pi, sqrt, exp, log, log2
@@ -5,8 +6,8 @@ from scipy.special import j0, j1  # Bessel function
 from scipy.optimize import minimize
 
 
-r_g = ((2 * G * M_sun) / (c**2)) / u.meter  # [m] Schwarzschild radius of the sun
-F0 = (R_sun / u.meter)**2 / (2 * r_g)  # [m] closest focus of SGL, ~547.303 au
+r_g_sun = ((2 * G * M_sun) / (c**2)) / u.meter  # [m] Schwarzschild radius of the sun
+F0_sun = (R_sun / u.meter)**2 / (2 * r_g_sun)  # [m] closest focus of SGL, ~547.303 au
 v_critical = 122.3  # [GHz] Returns the frequency at which the sun has no focus
 
 
@@ -15,7 +16,7 @@ def d_critical(frequency):
     for gravity + plasma"""
 
     def distance_min(impact_parameter):
-        return F0 * impact_parameter**2 * (1 - (v_critical**2 /
+        return F0_sun * impact_parameter**2 * (1 - (v_critical**2 /
             frequency ** 2) * (1 / impact_parameter)**15)**-1
 
     return minimize(distance_min, bounds=[(1, 2)], x0=1.1).fun[0]
@@ -73,13 +74,13 @@ def Q(wavelength):
     return Q
 
 
-def sgl_psf(rho, wavelength, z):
+def sgl_psf(rho, wavelength, z, r_g=r_g_sun):
     """Returns the gain for a point of the PSF (rho: distance from axis)"""
     return 4 * pi**2 / (1-exp(1) ** (-4 * pi**2 * r_g / wavelength)) * r_g / \
         wavelength * j0(2*pi*(rho/wavelength)*sqrt((2*r_g)/z))**2
 
 
-def integrated_flux(wavelength, z, d0):
+def integrated_flux(wavelength, z, d0, r_g=r_g_sun):
     """Eq. 143 in Turyshev (2017)"""
     first_term = 4 * pi**2 / (1 - exp(1) ** (-4 * pi**2 * r_g / wavelength)) * \
         r_g / wavelength
@@ -88,22 +89,22 @@ def integrated_flux(wavelength, z, d0):
     return first_term * (zeroth_bessel + first_bessel)
 
 
-def classical_aperture(wavelength, z, d0):
+def classical_aperture(wavelength, z, d0, r_g=r_g_sun):
     """Returns the corresponding size D of a classical aperture [m] for a
     given SGL aperture d0 [m]"""
-    flux = integrated_flux(wavelength, z, d0)
+    flux = integrated_flux(wavelength, z, d0, r_g=r_g)
     sgl_aperture = pi * (d0 / 2)**2
     effective_flux = flux * sgl_aperture
     classical_aperture = 2 * sqrt(effective_flux / pi)  # equivalent telescope diameter [m]
     return classical_aperture
 
 
-def b_of_z(z):
+def b_of_z(z, F0=F0_sun):
     """Returns impact parameter b as a function of heliocentric distance z [m]"""
     return sqrt(z) / sqrt(F0)
 
 
-def z_of_b(b):
+def z_of_b(b, F0=F0_sun):
     """Returns heliocentric distance z [m] as a function of impact parameter b"""
     return F0 * (b * (R_sun / u.meter))**2 / (R_sun / u.meter)**2
 
@@ -161,3 +162,130 @@ def noise_photons(wavelength, z, d0, fractional_bandwidth, print_status=False):
 def QuadraticLimbDarkening(Impact, limb1, limb2):
     """Quadratic limb darkening. Kopal 1950, Harvard Col. Obs. Circ., 454, 1"""
     return 1 - limb1 * (1 - Impact) - limb2 * (1 - Impact) ** 2
+
+
+def xy_rotate(x, y, xcen, ycen, phi):
+    """
+    Copyright 2009 by Adam S. Bolton
+    Creative Commons Attribution-Noncommercial-ShareAlike 3.0 license applies
+    NAME: xy_rotate
+
+    PURPOSE: Transform input (x, y) coordiantes into the frame of a new
+             (x, y) coordinate system that has its origin at the point
+             (xcen, ycen) in the old system, and whose x-axis is rotated
+             c.c.w. by phi degrees with respect to the original x axis.
+
+    USAGE: (xnew,ynew) = xy_rotate(x, y, xcen, ycen, phi)
+
+    ARGUMENTS:
+      x, y: numpy ndarrays with (hopefully) matching sizes
+            giving coordinates in the old system
+      xcen: old-system x coordinate of the new origin
+      ycen: old-system y coordinate of the new origin
+      phi: angle c.c.w. in degrees from old x to new x axis
+
+    RETURNS: 2-item tuple containing new x and y coordinate arrays
+
+    WRITTEN: Adam S. Bolton, U. of Utah, 2009
+    """
+    phirad = numpy.deg2rad(phi)
+    xnew = (x - xcen) * numpy.cos(phirad) + (y - ycen) * numpy.sin(phirad)
+    ynew = (y - ycen) * numpy.cos(phirad) - (x - xcen) * numpy.sin(phirad)
+    return (xnew,ynew)
+
+
+def gauss_2d(x, y, par):
+    """
+    Copyright 2009 by Adam S. Bolton
+    Creative Commons Attribution-Noncommercial-ShareAlike 3.0 license applies
+    NAME: gauss_2d
+
+    PURPOSE: Implement 2D Gaussian function
+
+    USAGE: z = gauss_2d(x, y, par)
+
+    ARGUMENTS:
+      x, y: vecors or images of coordinates;
+            should be matching numpy ndarrays
+      par: vector of parameters, defined as follows:
+        par[0]: amplitude
+        par[1]: intermediate-axis sigma
+        par[2]: x-center
+        par[3]: y-center
+        par[4]: axis ratio
+        par[5]: c.c.w. major-axis rotation w.r.t. x-axis
+
+    RETURNS: 2D Gaussian evaluated at x-y coords
+
+    NOTE: amplitude = 1 is not normalized, but rather has max = 1
+
+    WRITTEN: Adam S. Bolton, U. of Utah, 2009
+    """
+    (xnew,ynew) = xy_rotate(x, y, par[2], par[3], par[5])
+    r_ell_sq = ((xnew**2)*par[4] + (ynew**2)/par[4]) / numpy.abs(par[1])**2
+    return par[0] * numpy.exp(-0.5*r_ell_sq)
+
+
+def sie_grad(x, y, par):
+    """
+    Copyright 2009 by Adam S. Bolton
+    Creative Commons Attribution-Noncommercial-ShareAlike 3.0 license applies
+    NAME: sie_grad
+
+    PURPOSE: compute the deflection of an SIE potential
+
+    USAGE: (xg, yg) = sie_grad(x, y, par)
+
+    ARGUMENTS:
+      x, y: vectors or images of coordinates;
+            should be matching numpy ndarrays
+      par: vector of parameters with 1 to 5 elements, defined as follows:
+        par[0]: lens strength, or 'Einstein radius'
+        par[1]: (optional) x-center (default = 0.0)
+        par[2]: (optional) y-center (default = 0.0)
+        par[3]: (optional) axis ratio (default=1.0)
+        par[4]: (optional) major axis Position Angle
+                in degrees c.c.w. of x axis. (default = 0.0)
+
+    RETURNS: tuple (xg, yg) of gradients at the positions (x, y)
+
+    NOTES: This routine implements an 'intermediate-axis' conventionumpy.
+      Analytic forms for the SIE potential can be found in:
+        Kassiola & Kovner 1993, ApJ, 417, 450
+        Kormann et al. 1994, A&A, 284, 285
+        Keeton & Kochanek 1998, ApJ, 495, 157
+      The parameter-order convention in this routine differs from that
+      of a previous IDL routine of the same name by ASB.
+
+    WRITTEN: Adam S. Bolton, U of Utah, 2009
+    """
+    # Set parameters:
+    b = numpy.abs(par[0]) # can't be negative!!!
+    xzero = 0. if (len(par) < 2) else par[1]
+    yzero = 0. if (len(par) < 3) else par[2]
+    q = 1. if (len(par) < 4) else numpy.abs(par[3])
+    phiq = 0. if (len(par) < 5) else par[4]
+    eps = 0.001 # for sqrt(1/q - q) < eps, a limit expression is used.
+    # Handle q > 1 gracefully:
+    if (q > 1.):
+        q = 1.0 / q
+        phiq = phiq + 90.0
+    # Go into shifted coordinats of the potential:
+    phirad = numpy.deg2rad(phiq)
+    xsie = (x-xzero) * numpy.cos(phirad) + (y-yzero) * numpy.sin(phirad)
+    ysie = (y-yzero) * numpy.cos(phirad) - (x-xzero) * numpy.sin(phirad)
+    # Compute potential gradient in the transformed system:
+    r_ell = numpy.sqrt(q * xsie**2 + ysie**2 / q)
+    qfact = numpy.sqrt(1./q - q)
+    # (r_ell == 0) terms prevent divide-by-zero problems
+    if (qfact >= eps):
+        xtg = (b/qfact) * numpy.arctan(qfact * xsie / (r_ell + (r_ell == 0)))
+        ytg = (b/qfact) * numpy.arctanh(qfact * ysie / (r_ell + (r_ell == 0)))
+    else:
+        xtg = b * xsie / (r_ell + (r_ell == 0))
+        ytg = b * ysie / (r_ell + (r_ell == 0))
+    # Transform back to un-rotated system:
+    xg = xtg * numpy.cos(phirad) - ytg * numpy.sin(phirad)
+    yg = ytg * numpy.cos(phirad) + xtg * numpy.sin(phirad)
+    # Return value:
+    return (xg, yg)
