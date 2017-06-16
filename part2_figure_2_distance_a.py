@@ -23,16 +23,8 @@ d_focal = (R_sun**2) / (2 *  schwarzschild_radius_sun) / au
 gridsize = 1000
 freqs = numpy.logspace(numpy.log10(v_critical), 4, gridsize, endpoint=True)
 
-#print(freqs)
 distances = numpy.zeros(gridsize)
-print(d_focal)
-
-
-#for i in range(len())
-
-
-#print((1.1*R_sun**2) / (2 *  schwarzschild_radius_sun) / au)
-#print(schwarzschild_radius_sun)
+# print(d_focal)
 
 counter = 0
 for freq in freqs:
@@ -69,8 +61,8 @@ ax.add_patch(patches.Rectangle((100, 500), v_critical - 100, 500,  fill=False, h
 ax.plot(freqs, distances, color='black')
 ax.plot((100, 10**4), (d_focal, d_focal), color='black', linestyle = 'dashed')
 ax.scatter(410, 600, s=100, marker='*')
-ax.text(170, 552, '547.3 au')
-ax.text(125, 505, '122.3 GHz')
+ax.text(170, 552, '546 au')
+ax.text(125, 505, '122 GHz')
 ax.set_xlabel('Frequency (GHz)')
 ax.set_ylabel('Distance from Sun (au)')
 ax.set_ylim([500, 850])

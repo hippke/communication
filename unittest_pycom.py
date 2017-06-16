@@ -101,12 +101,3 @@ if math.isclose(result, expected_result, rel_tol=1e-6):
     print('PASS integrated_flux, result', result)
 else:
     print('FAILED integrated_flux, result', result)
-
-
-"""Test classical_aperture"""
-result = classical_aperture(wavelength=0.000001, z=600 * au / u.meter, d0=1)
-expected_result = 53570.44594007288
-if math.isclose(result, expected_result, rel_tol=1e-6):
-    print('PASS classical_aperture, result', result)
-else:
-    print('FAILED classical_aperture, result', result)
