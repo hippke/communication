@@ -1,4 +1,5 @@
 import math
+import numpy
 from astropy.constants import c, G, M_sun, R_sun, au, L_sun, pc
 from astropy import units as u
 from math import pi, sqrt, exp, log, log2
@@ -48,6 +49,15 @@ print('Angular resolution', '{:.2f}'.format(ar))
 # Ratio of Einstein ring and angular resolution (how much is it unresolved?)
 print('Einstein ring unresolved by', '{:.2e}'.format(se / ar))
 
+# How large must a telescope be at z=600 to resolve the Einstein ring?
+test_values = numpy.arange(1, 16000, 100)
+for d_sgl in test_values:
+    resolution = angular_resolution(d=d_sgl, wavelength=1000*10**-9)
+    apparent_width_einstein_ring = d_sgl / (2 * 600 * au / u.meter)  # radians
+    apparent_width_einstein_ring = apparent_width_einstein_ring * 3600 * 180 / pi  # arcsec
+    if resolution < apparent_width_einstein_ring:
+        break
+print('Einstein ring resolved for a telescope at z=600 with aperture', d_sgl, '[m]')
 
 ### Section 2.2 Frequency cutoff
 frequency = 410  # [GHz]
