@@ -88,12 +88,17 @@ def integrated_flux(wavelength, z, d0, r_g=r_g_sun):
     first_bessel =  j1(pi*(d0/wavelength)*sqrt((2*r_g)/z))**2
     return first_term * (zeroth_bessel + first_bessel)
 
-
 def classical_aperture(wavelength, z, d0, r_g=r_g_sun):
     """Returns the corresponding size D of a classical aperture [m] for a
     given SGL aperture d0 [m]"""
     flux = integrated_flux(wavelength, z, d0, r_g=r_g)
-    sgl_aperture = pi * (d0 / 2)**2
+
+    # Bugfix as explained by Slava Turyshev in his mail on 24 July 2017
+    # "I realized that the thickness of the Einstein ring seeing by a telescope 
+    # is equal to the telescope's aperture. Thus, I was missing a factor of 
+    # \sqrt{2} in calculating the equivalent telescope diameter - is is not 
+    # 53 km, but 75km.
+    sgl_aperture = 2 * pi * (d0 / 2)**2  
     effective_flux = flux * sgl_aperture
     classical_aperture = 2 * sqrt(effective_flux / pi)  # equivalent telescope diameter [m]
     return classical_aperture
