@@ -124,7 +124,7 @@ a gain of', '{:.2e}'.format(float(result3 / result1)))
 
 result4 = classical_aperture(wavelength=0.000001, z=2200 * au / u.meter, d0=1)
 result5 = photons_received(D_r=result4, D_t=1, P=1, wavelength=wavelength, R=1.3 * pc / u.meter, Q_R=1.22)
-print('At z=600 the equivalent D_classical is', '{:.2f}'.format(float(result4 / 1000)), 'km')
+print('At z=2200 the equivalent D_classical is', '{:.2f}'.format(float(result4 / 1000)), 'km')
 print('For a flux of ', '{:.2e}'.format(float(result5)), 'photons per Watt per second, neglecting losses.')
 
 wavelength = 1000 * 10**-9  # 1000 nm = 1um = 10**-6m
@@ -162,10 +162,11 @@ capacity = holevo_thermal(M=M, N_th=N_th, eta=receiver_efficiency)
 
 SNR = signal / noise
 data_rate = (capacity * signal) / 10**6  # Mbits/s
-print('Data rate d_SGL, 1 meter', data_rate)
+print(capacity)
+print('Data rate d_SGL Mbits/s, 1 meter', data_rate)
 
 signal = photons_received(
-    D_r=49000,
+    D_r=71000,
     D_t=1,
     P=power,
     wavelength=wavelength,
@@ -177,8 +178,8 @@ capacity = holevo_thermal(M=M, N_th=N_th, eta=receiver_efficiency)
 data_rate = (capacity * signal) / 10**6  # Mbits/s
 print('Data rate d_classical, 45 km', data_rate)
 
-a1 = 49  # [km] aperture
-a2 = 53.57  # [km] aperture
+a2 = 75.75  # [km] aperture
+a1 = 71  # [km] aperture
 
 a1_area = pi * a1**2 / 4
 a2_area = pi * a2**2 / 4
